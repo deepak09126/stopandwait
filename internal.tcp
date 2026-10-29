@@ -1,0 +1,122 @@
+# Create a new NS2 simulator
+set ns [new Simulator]
+
+# Assign blue color to flow ID 1
+$ns color 1 Blue
+
+# Create a NAM trace file
+set nf [open out.nam w]
+
+# Enable NAM tracing
+$ns namtrace-all $nf
+
+
+# Procedure to finish the simulation
+proc finish {} {
+    global ns nf
+
+    # Flush the trace data
+    $ns flush-trace
+
+    # Close the trace file
+    close $nf
+
+    # Open NAM animation
+    exec nam out.nam &
+
+    # Exit the simulation
+    exit 0
+}
+
+
+# Create sender and receiver nodes
+set n0 [$ns node]
+set n1 [$ns node]
+
+
+# Assign labels to nodes
+$ns at 0.0 "$n0 label \"Sender\""
+$ns at 0.0 "$n1 label \"Receiver\""
+
+
+# Create a duplex link between nodes
+# Bandwidth = 1 Mbps
+# Delay = 200 ms
+# Queue type = DropTail
+$ns duplex-link $n0 $n1 1Mb 200ms DropTail
+
+# Set link orientation
+$ns duplex-link-op $n0 $n1 orient right
+
+
+# Create TCP sender agent
+set tcp [new Agent/TCP]
+
+# Attach TCP agent to sender node
+$ns attach-agent $n0 $tcp
+
+# Set flow ID
+$tcp set fid_ 1
+
+# Set TCP window size to 1
+$tcp set window_ 1
+
+# Set maximum congestion window to 1
+$tcp set maxcwnd_ 1
+
+# Enable TCP tracing
+$ns add-agent-trace $tcp tcp
+
+# Monitor TCP agent
+$ns monitor-agent-trace $tcp
+
+
+# Create TCP receiver agent
+set tcpsink [new Agent/TCPSink]
+
+# Attach TCP receiver to node
+$ns attach-agent $n1 $tcpsink
+
+# Connect sender and receiver
+$ns connect $tcp $tcpsink
+
+
+# Create FTP application
+set ftp [new Application/FTP]
+
+# Attach FTP to TCP sender
+$ftp attach-agent $tcp
+
+
+# Start FTP at 0.5 seconds
+$ns at 0.5 "$ftp start"
+
+
+# Detach agents at 3 seconds
+$ns at 3.0 "$ns detach-agent $n0 $tcp ; $ns detach-agent $n1 $tcpsink"
+
+
+# Add packet and ACK annotations
+# These are only for NAM visualization
+
+$ns at 1.0 "$ns trace-annotate \"Send Packet 1\""
+
+$ns at 1.4 "$ns trace-annotate \"Receive ACK 1\""
+
+$ns at 2.0 "$ns trace-annotate \"Send Packet 2\""
+
+$ns at 2.5 "$ns trace-annotate \"Receive ACK 2\""
+
+$ns at 3.2 "$ns trace-annotate \"Send Packet 3\""
+
+$ns at 3.5 "$ns trace-annotate \"Receive ACK 3\""
+
+$ns at 3.8 "$ns trace-annotate \"Send Packet 4\""
+
+
+# Schedule simulation termination
+$ns at 4.0 "finish"
+
+
+# Start the simulation
+$ns run
